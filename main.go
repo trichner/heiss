@@ -1,21 +1,15 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"flag"
 	"log"
 	"net/http"
 	"os"
-	"time"
+	"strings"
 
-	"cloud.google.com/go/bigquery"
-	"google.golang.org/api/iterator"
-)
-
-const (
-	projectID    = "trichner-212015"
-	query        = "SELECT * FROM `trichner-212015.events.timeseries` ORDER BY ts DESC LIMIT 100"
-	queryWithAvg = "SELECT * , AVG(temp_c) OVER (ORDER BY ts ROWS BETWEEN 9 PRECEDING AND CURRENT ROW) AS rolling_avg_temp_c FROM `trichner-212015.events.timeseries` ORDER BY ts DESC LIMIT 100"
+	"github.com/trichner/heiss/pkg/api"
+	"github.com/trichner/heiss/pkg/login"
+	"github.com/trichner/heiss/pkg/login/session"
 )
 
 func main() {
@@ -24,78 +18,42 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("projectID: %s", projectID)
+	log.Printf("projectID: %s", api.ProjectID)
 
-	http.Handle("GET /api/timeseries", newTimeseriesHandler())
+	var dev bool
+	flag.BoolVar(&dev, "dev", false, "enable dev mode")
+	flag.Parse()
+
+	if dev {
+		log.Println("dev mode enabled")
+	}
+
+	mux := http.NewServeMux()
+
+	mux.Handle("GET /api/timeseries", api.New())
+	mux.Handle("GET /", http.FileServer(http.Dir("static")))
+
+	if !dev {
+		secured := http.NewServeMux()
+		key := os.Getenv("SECRET_KEY")
+		if strings.TrimSpace(key) == "" {
+			panic("missing SECRET_KEY")
+		}
+
+		password := os.Getenv("PASSWORD")
+		if strings.TrimSpace(password) == "" {
+			panic("missing PASSWORD")
+		}
+
+		secured.Handle("/", login.NewLoginHandler(mux, session.NewInMemorySessionManager(password), []byte(key)))
+		mux = secured
+	}
 
 	log.Printf("listening on :%s", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
-}
 
-type observation struct {
-	DeviceId  string    `json:"device_id"`
-	RhPercent float64   `json:"rh_percent"`
-	TempC     float64   `json:"temp_c"`
-	Ts        time.Time `json:"ts"`
-}
-
-func mapObservation(r map[string]bigquery.Value) observation {
-	return observation{
-		DeviceId:  r["device_id"].(string),
-		RhPercent: r["rh_percent"].(float64),
-		TempC:     r["temp_c"].(float64),
-		Ts:        r["ts"].(time.Time),
+	if dev {
+		log.Printf("magic at http://localhost:%s", port)
 	}
-}
 
-type rowIterator interface {
-	Next(dst interface{}) error
-}
-
-func readObservations(it rowIterator) ([]observation, error) {
-	var rows []observation
-	for {
-		var r map[string]bigquery.Value
-		err := it.Next(&r)
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		rows = append(rows, mapObservation(r))
-	}
-	return rows, nil
-}
-
-func newTimeseriesHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		client, err := bigquery.NewClient(ctx, projectID)
-		if err != nil {
-			log.Printf("failed to instantiate client: %v", err)
-			http.Error(w, "query client failed to instantiate", http.StatusInternalServerError)
-			return
-		}
-		defer client.Close()
-
-		q := client.Query(query)
-		it, err := q.Read(ctx)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("query: %v", err), http.StatusInternalServerError)
-			return
-		}
-
-		rows, err := readObservations(it)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("read row: %v", err), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(rows); err != nil {
-			log.Printf("encode response: %v", err)
-		}
-	})
+	log.Fatal(http.ListenAndServe(":"+port, mux))
 }

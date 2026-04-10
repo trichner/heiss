@@ -1,0 +1,7 @@
+#!include .gitignore
+
+.git
+.idea
+.claude
+.gitignore
+**/credentials.json

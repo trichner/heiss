@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -53,19 +53,18 @@ func (f *fakeIterator) Next(dst interface{}) error {
 }
 
 func TestLocal(t *testing.T) {
-
 	ctx := t.Context()
 
-	client, err := bigquery.NewClient(ctx, projectID, option.WithCredentialsFile("./credentials.json"))
+	client, err := bigquery.NewClient(ctx, ProjectID, option.WithCredentialsFile("./credentials.json"))
 	if err != nil {
 		t.Fatalf("readObservations: %v", err)
 	}
 
 	defer client.Close()
 
-	q := client.Query(query)
+	q := client.Query(Query)
 	it, err := q.Read(ctx)
-	observations, err := readObservations(it)
+	observations, err := ReadObservations(it)
 	if err != nil {
 		t.Fatalf("readObservations: %v", err)
 	}
@@ -83,15 +82,14 @@ func TestHandleTimeseries(t *testing.T) {
 		},
 	}
 
-	rows, err := readObservations(it)
+	rows, err := ReadObservations(it)
 	if err != nil {
-		t.Fatalf("readObservations: %v", err)
+		t.Fatalf("ReadObservations: %v", err)
 	}
 	if len(rows) != 2 {
 		t.Fatalf("got %d rows, want 2", len(rows))
 	}
 
-	// Verify JSON encoding via the handler response path
 	rec := httptest.NewRecorder()
 	rec.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(rec).Encode(rows); err != nil {
@@ -102,7 +100,7 @@ func TestHandleTimeseries(t *testing.T) {
 		t.Errorf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
 
-	var got []observation
+	var got []Observation
 	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 		t.Fatalf("decode: %v", err)
 	}

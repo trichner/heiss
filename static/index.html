@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>heiss</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .card {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 1rem;
+            padding: 1.25rem 1.5rem;
+            text-align: center;
+            flex: 1;
+            transition: border-color 0.3s;
+        }
+
+        .card:hover {
+            border-color: #444;
+        }
+
+        .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #888;
+            margin-bottom: 0.5rem;
+        }
+
+        .value {
+            font-size: 2.5rem;
+            font-weight: 200;
+            line-height: 1;
+        }
+
+        .unit {
+            font-size: 1rem;
+            color: #666;
+            margin-left: 0.1em;
+        }
+
+        .sensor {
+            margin-bottom: 1.5rem;
+        }
+
+        .sensor-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #aaa;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .timestamp {
+            margin-top: 0.4rem;
+            font-size: 0.7rem;
+            color: #555;
+            text-align: center;
+        }
+
+        .error {
+            color: #c44;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div id="sensors"></div>
+
+<script>
+
+    const sensors = {
+        "78:e3:6d:05:61:04": "Wohnen",
+        "e0:5a:1b:77:f1:80": "Schlafen"
+    }
+
+    function render(data) {
+        const latest = {};
+        for (const row of data) {
+            if (!latest[row.device_id]) {
+                latest[row.device_id] = row;
+            }
+        }
+
+        const el = document.getElementById("sensors");
+        el.innerHTML = "";
+
+        const ids = Object.keys(latest).sort();
+        for (const id of ids) {
+            const d = latest[id];
+            const section = document.createElement("div");
+            section.className = "sensor";
+            section.innerHTML =
+                '<div class="sensor-name">' + sensors[id] + " (" + id + ")" + '</div>' +
+                '<div class="container">' +
+                '<div class="card">' +
+                '<div class="label">Temperature</div>' +
+                '<div class="value">' + d.temp_c.toFixed(1) + '<span class="unit">&deg;C</span></div>' +
+                '</div>' +
+                '<div class="card">' +
+                '<div class="label">Humidity</div>' +
+                '<div class="value">' + d.rh_percent.toFixed(0) + '<span class="unit">%</span></div>' +
+                '</div>' +
+                '</div>' +
+                '<div class="timestamp">' + new Date(d.ts).toLocaleString() + '</div>';
+            el.appendChild(section);
+        }
+    }
+
+    async function load() {
+        try {
+            const res = await fetch("/api/timeseries");
+            if (!res.ok) {
+                throw new Error(res.statusText)
+            }
+            render(await res.json());
+        } catch (e) {
+            document.getElementById("sensors").innerHTML =
+                '<div class="error">' + e.message + '</div>';
+        }
+    }
+
+    load();
+    setInterval(load, 10_000);
+</script>
+</body>
+</html>
