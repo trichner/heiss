@@ -31,6 +31,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("GET /api/timeseries", api.New())
+	mux.Handle("GET /api/history.svg", api.NewHistoryHandler())
 	mux.Handle("GET /", http.FileServer(http.Dir("static")))
 
 	if !dev {

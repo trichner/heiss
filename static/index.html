@@ -17,9 +17,71 @@
             background: #0f0f0f;
             color: #e0e0e0;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
             min-height: 100vh;
+            padding: 1.5rem 1rem;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 700px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .tab {
+            padding: 0.35rem 1rem;
+            border: 1px solid #2a2a2a;
+            border-radius: 0.5rem;
+            background: transparent;
+            color: #666;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: inherit;
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        .tab.active {
+            border-color: #555;
+            color: #e0e0e0;
+        }
+
+        .tab:hover {
+            border-color: #444;
+            color: #bbb;
+        }
+
+        .window-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .win {
+            padding: 0.25rem 0.75rem;
+            border: 1px solid #2a2a2a;
+            border-radius: 0.4rem;
+            background: transparent;
+            color: #666;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-family: inherit;
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        .win.active {
+            border-color: #555;
+            color: #e0e0e0;
+        }
+
+        .win:hover {
+            border-color: #444;
+            color: #bbb;
         }
 
         .container {
@@ -80,6 +142,12 @@
             text-align: center;
         }
 
+        .history-img {
+            width: 100%;
+            display: block;
+            border-radius: 0.5rem;
+        }
+
         .error {
             color: #c44;
             font-size: 0.9rem;
@@ -88,7 +156,25 @@
     </style>
 </head>
 <body>
-<div id="sensors"></div>
+<div id="app">
+    <div class="tabs">
+        <button class="tab active" onclick="showTab(this,'current')">Current</button>
+        <button class="tab" onclick="showTab(this,'history')">History</button>
+    </div>
+
+    <div id="view-current">
+        <div id="sensors"></div>
+    </div>
+
+    <div id="view-history" style="display:none">
+        <div class="window-selector">
+            <button class="win active" onclick="setWin(this,'day')">Day</button>
+            <button class="win" onclick="setWin(this,'week')">Week</button>
+            <button class="win" onclick="setWin(this,'month')">Month</button>
+        </div>
+        <div id="history-cards"></div>
+    </div>
+</div>
 
 <script>
 
@@ -96,6 +182,45 @@
         "78:e3:6d:05:61:04": "Wohnen",
         "e0:5a:1b:77:f1:80": "Schlafen"
     }
+
+    // --- Tab navigation ---
+
+    function showTab(el, tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('view-current').style.display = tab === 'current' ? '' : 'none';
+        document.getElementById('view-history').style.display = tab === 'history' ? '' : 'none';
+        if (tab === 'history') renderHistory();
+    }
+
+    // --- History tab ---
+
+    let activeWindow = 'day';
+
+    function setWin(el, win) {
+        activeWindow = win;
+        document.querySelectorAll('.win').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const t = Math.floor(Date.now() / 60000);
+        const el = document.getElementById('history-cards');
+        el.innerHTML = '';
+        for (const [id, name] of Object.entries(sensors)) {
+            const section = document.createElement('div');
+            section.className = 'sensor';
+            section.innerHTML =
+                '<div class="sensor-name">' + name + ' (' + id + ')</div>' +
+                '<img class="history-img" ' +
+                'src="/api/history.svg?device=' + encodeURIComponent(id) + '&window=' + activeWindow + '&_t=' + t + '" ' +
+                'loading="lazy">';
+            el.appendChild(section);
+        }
+    }
+
+    // --- Current tab ---
 
     function render(data) {
         const latest = {};
