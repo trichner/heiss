@@ -13,13 +13,14 @@ The dashboard SHALL compute the Temperature-Humidity Index (THI) for each sensor
 
 #### Scenario: Comfort band color mapping
 - **WHEN** THI is computed
-- **THEN** the border color SHALL map to comfort bands as follows:
-  - THI < 15 → `#4090e0` (cold)
-  - 15 ≤ THI < 19 → `#40a0c0` (cool)
-  - 19 ≤ THI < 24 → `#50b870` (comfortable)
-  - 24 ≤ THI < 27 → `#d4b840` (warm)
-  - 27 ≤ THI < 32 → `#e07040` (uncomfortable)
-  - THI ≥ 32 → `#d04040` (hot)
+- **THEN** the border color SHALL be linearly interpolated between the following anchor points:
+  - THI = 15 → `#4090e0` (cold)
+  - THI = 19 → `#40a0c0` (cool)
+  - THI = 24 → `#50b870` (comfortable)
+  - THI = 27 → `#d4b840` (warm)
+  - THI = 32 → `#e07040` (uncomfortable)
+  - THI = 37 → `#d04040` (hot)
+- **THEN** values below 15 SHALL clamp to the cold color and values above 37 SHALL clamp to the hot color
 
 ### Requirement: THI comfort label on sensor cards
 The dashboard SHALL display a short text label describing the THI comfort level alongside the reading timestamp.

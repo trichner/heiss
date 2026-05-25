@@ -226,13 +226,36 @@
         return tempC - 0.55 * (1 - rh / 100) * (tempC - 14.5);
     }
 
+    const thiStops = [
+        { t: 15, r: 0x40, g: 0x90, b: 0xe0 },  // cold
+        { t: 19, r: 0x40, g: 0xa0, b: 0xc0 },  // cool
+        { t: 24, r: 0x50, g: 0xb8, b: 0x70 },  // comfortable
+        { t: 27, r: 0xd4, g: 0xb8, b: 0x40 },  // warm
+        { t: 32, r: 0xe0, g: 0x70, b: 0x40 },  // uncomfortable
+        { t: 37, r: 0xd0, g: 0x40, b: 0x40 },  // hot
+    ];
+
+    function thiColor(t) {
+        if (t <= thiStops[0].t) { const s = thiStops[0]; return `rgb(${s.r},${s.g},${s.b})`; }
+        const last = thiStops[thiStops.length - 1];
+        if (t >= last.t) return `rgb(${last.r},${last.g},${last.b})`;
+        for (let i = 0; i < thiStops.length - 1; i++) {
+            const a = thiStops[i], b = thiStops[i + 1];
+            if (t <= b.t) {
+                const f = (t - a.t) / (b.t - a.t);
+                return `rgb(${Math.round(a.r + f*(b.r-a.r))},${Math.round(a.g + f*(b.g-a.g))},${Math.round(a.b + f*(b.b-a.b))})`;
+            }
+        }
+    }
+
     function thiLevel(t) {
-        if (t < 15) return { color: '#4090e0', label: 'cold' };
-        if (t < 19) return { color: '#40a0c0', label: 'cool' };
-        if (t < 24) return { color: '#50b870', label: 'comfortable' };
-        if (t < 27) return { color: '#d4b840', label: 'warm' };
-        if (t < 32) return { color: '#e07040', label: 'uncomfortable' };
-        return { color: '#d04040', label: 'hot' };
+        const color = thiColor(t);
+        if (t < 15) return { color, label: 'cold' };
+        if (t < 19) return { color, label: 'cool' };
+        if (t < 24) return { color, label: 'comfortable' };
+        if (t < 27) return { color, label: 'warm' };
+        if (t < 32) return { color, label: 'uncomfortable' };
+        return { color, label: 'hot' };
     }
 
     // --- Current tab ---
