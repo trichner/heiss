@@ -220,6 +220,21 @@
         }
     }
 
+    // --- THI helpers ---
+
+    function thi(tempC, rh) {
+        return tempC - 0.55 * (1 - rh / 100) * (tempC - 14.5);
+    }
+
+    function thiLevel(t) {
+        if (t < 15) return { color: '#4090e0', label: 'cold' };
+        if (t < 19) return { color: '#40a0c0', label: 'cool' };
+        if (t < 24) return { color: '#50b870', label: 'comfortable' };
+        if (t < 27) return { color: '#d4b840', label: 'warm' };
+        if (t < 32) return { color: '#e07040', label: 'uncomfortable' };
+        return { color: '#d04040', label: 'hot' };
+    }
+
     // --- Current tab ---
 
     function render(data) {
@@ -236,21 +251,24 @@
         const ids = Object.keys(latest).sort();
         for (const id of ids) {
             const d = latest[id];
+            const thiValue = thi(d.temp_c, d.rh_percent);
+            const level = thiLevel(thiValue);
             const section = document.createElement("div");
             section.className = "sensor";
             section.innerHTML =
                 '<div class="sensor-name">' + sensors[id] + " (" + id + ")" + '</div>' +
                 '<div class="container">' +
-                '<div class="card">' +
+                '<div class="card" style="border-color:' + level.color + '">' +
                 '<div class="label">Temperature</div>' +
                 '<div class="value">' + d.temp_c.toFixed(1) + '<span class="unit">&deg;C</span></div>' +
                 '</div>' +
-                '<div class="card">' +
+                '<div class="card" style="border-color:' + level.color + '">' +
                 '<div class="label">Humidity</div>' +
                 '<div class="value">' + d.rh_percent.toFixed(0) + '<span class="unit">%</span></div>' +
                 '</div>' +
                 '</div>' +
-                '<div class="timestamp">' + new Date(d.ts).toLocaleString() + '</div>';
+                '<div class="timestamp">' + new Date(d.ts).toLocaleString() +
+                ' &middot; <span style="color:' + level.color + '" title="THI: ' + thiValue.toFixed(1) + '">' + level.label + '</span></div>';
             el.appendChild(section);
         }
     }
